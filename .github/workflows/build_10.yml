@@ -5,6 +5,13 @@ name: Build TweakUIX
 
 on:
   workflow_dispatch:
+    inputs:
+      archive_ALL:
+        description: Archive ALL
+        type: boolean
+        default: false
+        required: true
+
   workflow_call:
 
 env:
@@ -56,12 +63,12 @@ jobs:
         with:
           type: 'zip'
           filename: '${{ env.TAG_NAME }}-${{ env.Configuration }}-${{ env.Platform }}-${{ env.Target }}'
-          directory: 'x64/Release'
-          inclusions: '*.cat *.cer *.inf *.dll *.exe *.bat'
+          directory: 'src/TUIX/bin/Release'
+          inclusions: '*.cat *.cer *.inf *.dll *.exe *.bat *.config'
           exclusions: '*.map *.pdb ./.git/* .git/*'
           recursive_exclusions: '*.map *.pdb'
           env_variable: 'ZIP_ARCHIVE_RELEASE'
-          path: '${{ env.TAG_NAME }}.cer ${{ env.TAG_NAME }}.inf ${{ env.TAG_NAME }}.dll'
+          path: '.'
 
       - name: MD5 for Zip Archive
         continue-on-error: true
@@ -73,7 +80,7 @@ jobs:
         with:
           type: 'md5'
           filename: '${{ env.TAG_NAME }}-${{ env.Configuration }}-${{ env.Platform }}-${{ env.Target }}.zip.md5'
-          directory: 'x64/Release'
+          directory: 'src/TUIX/bin/Release'
           path: '${{ env.TAG_NAME }}-${{ env.Configuration }}-${{ env.Platform }}-${{ env.Target }}.zip'
           ignore_git: true
           # output env.SHA_SUMS
@@ -96,6 +103,7 @@ jobs:
             ${{ env.SHA_SUMS }}
 
       - name: Create Zip Archive Release - ALL
+        if:  ${{ inputs.archive_ALL}}
         continue-on-error: true
         uses: deep-soft/zip-release@v3
         env:
@@ -113,10 +121,11 @@ jobs:
           path: '${{ env.TAG_NAME }}.cer ${{ env.TAG_NAME }}.inf ${{ env.TAG_NAME }}.dll'
 
       - name: Publish
+        if:  ${{ inputs.archive_ALL}}
         continue-on-error: true
         uses: deep-soft/action-gh-release@v2.1
         with:
-          tag_name: ${{ env.TAG_NAME }}
+          tag_name: ${{ env.TAG_NAME }}-ALL
           # tag_name: ${{ env.TAG_NAME }}-${{ env.VERSION }}
           files: |
             ${{ env.ZIP_ARCHIVE_ALL }}
