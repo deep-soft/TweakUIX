@@ -1,0 +1,121 @@
+# 2024-03-14 07:20
+# .github/workflows/build_10.yml
+# 
+name: Build TweakUIX
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+env:
+  TAG_NAME: TUIX
+
+jobs:
+  build_Win10:
+    strategy:
+      fail-fast: false
+      matrix:
+        # configuration: [Debug, Release]
+        configuration: [Release]
+        platform: [Any CPU]
+        target: [Windows10]
+
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v1.3.1
+        
+      - name: Set Solution name
+        shell: bash
+        run: |
+          echo "Solution_Path=${{ env.TAG_NAME }}.sln" >> $GITHUB_ENV
+
+      - name: Build solution
+        continue-on-error: true
+        working-directory: 'src'
+        #  msbuild ${{ env.Solution_Path }} /property:Configuration=${{ env.Configuration }} /property:Platform=${{ env.Platform }} /property:TargetVersion=${{ env.Target }}
+        run: |
+          msbuild ${{ env.Solution_Path }} /property:Configuration=${{ env.Configuration }} /property:Platform=${{ env.Platform }}
+        env:
+          Configuration: ${{ matrix.configuration }}
+          Platform: ${{ matrix.platform }}
+          Target: ${{ matrix.target }}
+
+      - name: Create Zip Archive Release
+        continue-on-error: true
+        uses: deep-soft/zip-release@v3
+        env:
+          Configuration: ${{ matrix.configuration }}
+          Platform: ${{ matrix.platform }}
+          Target: ${{ matrix.target }}
+        with:
+          type: 'zip'
+          filename: '${{ env.TAG_NAME }}-${{ env.Configuration }}-${{ env.Platform }}-${{ env.Target }}'
+          directory: 'x64/Release'
+          inclusions: '*.cat *.cer *.inf *.dll *.exe *.bat'
+          exclusions: '*.map *.pdb ./.git/* .git/*'
+          recursive_exclusions: '*.map *.pdb'
+          env_variable: 'ZIP_ARCHIVE_RELEASE'
+          path: '${{ env.TAG_NAME }}.cer ${{ env.TAG_NAME }}.inf ${{ env.TAG_NAME }}.dll'
+
+      - name: MD5 for Zip Archive
+        continue-on-error: true
+        uses: deep-soft/sha-checksums@v1
+        env:
+          Configuration: ${{ matrix.configuration }}
+          Platform: ${{ matrix.platform }}
+          Target: ${{ matrix.target }}
+        with:
+          type: 'md5'
+          filename: '${{ env.TAG_NAME }}-${{ env.Configuration }}-${{ env.Platform }}-${{ env.Target }}.zip.md5'
+          directory: 'x64/Release'
+          path: '${{ env.TAG_NAME }}-${{ env.Configuration }}-${{ env.Platform }}-${{ env.Target }}.zip'
+          ignore_git: true
+          # output env.SHA_SUMS
+
+      - name: Upload zip
+        continue-on-error: true
+        uses: deep-soft/upload-artifact@v4
+        with:
+          name: ${{ env.TAG_NAME }}
+          path: ${{ env.ZIP_ARCHIVE_RELEASE }}
+
+      - name: Publish
+        continue-on-error: true
+        uses: deep-soft/action-gh-release@v2.1
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          # tag_name: ${{ env.TAG_NAME }}-${{ env.VERSION }}
+          files: |
+            ${{ env.ZIP_ARCHIVE_RELEASE }}
+            ${{ env.SHA_SUMS }}
+
+      - name: Create Zip Archive Release - ALL
+        continue-on-error: true
+        uses: deep-soft/zip-release@v3
+        env:
+          Configuration: ${{ matrix.configuration }}
+          Platform: ${{ matrix.platform }}
+          Target: ${{ matrix.target }}
+        with:
+          type: 'zip'
+          filename: '${{ env.TAG_NAME }}-${{ env.Configuration }}-${{ env.Platform }}-${{ env.Target }}-ALL.zip'
+          directory: '.'
+          inclusions: '*'
+          exclusions: ''
+          recursive_exclusions: ''
+          env_variable: 'ZIP_ARCHIVE_ALL'
+          path: '${{ env.TAG_NAME }}.cer ${{ env.TAG_NAME }}.inf ${{ env.TAG_NAME }}.dll'
+
+      - name: Publish
+        continue-on-error: true
+        uses: deep-soft/action-gh-release@v2.1
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          # tag_name: ${{ env.TAG_NAME }}-${{ env.VERSION }}
+          files: |
+            ${{ env.ZIP_ARCHIVE_ALL }}
