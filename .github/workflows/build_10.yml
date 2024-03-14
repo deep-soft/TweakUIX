@@ -55,6 +55,7 @@ jobs:
 
       - name: Create Zip Archive Release
         continue-on-error: true
+        #inclusions: '*.cat *.cer *.inf *.dll *.exe *.bat *.config'
         uses: deep-soft/zip-release@v3
         env:
           Configuration: ${{ matrix.configuration }}
@@ -64,7 +65,7 @@ jobs:
           type: 'zip'
           filename: '${{ env.TAG_NAME }}-${{ env.Configuration }}-${{ env.Platform }}-${{ env.Target }}'
           directory: 'src/TUIX/bin/Release'
-          inclusions: '*.cat *.cer *.inf *.dll *.exe *.bat *.config'
+          inclusions: ''
           exclusions: '*.map *.pdb ./.git/* .git/*'
           recursive_exclusions: '*.map *.pdb'
           env_variable: 'ZIP_ARCHIVE_RELEASE'
